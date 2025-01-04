@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import messagebox
 import random
+import json
 import pyperclip
 
 FONT_NAME = "Poppins"
@@ -16,9 +17,9 @@ def generate_password():
     nr_symbols = random.randint(2, 4)
     nr_numbers = random.randint(2, 4)
 
-    password_letters = [random.choice(letters) for i in range(nr_letters)]
-    password_symbols = [random.choice(symbols) for i in range(nr_symbols)]
-    password_numbers = [random.choice(numbers) for i in range(nr_numbers)]
+    password_letters = [random.choice(letters) for _ in range(nr_letters)]
+    password_symbols = [random.choice(symbols) for _ in range(nr_symbols)]
+    password_numbers = [random.choice(numbers) for _ in range(nr_numbers)]
 
     password_list = password_letters + password_symbols +password_numbers
 
@@ -29,28 +30,76 @@ def generate_password():
     password_entry.insert(0,password)
     pyperclip.copy(password)
 
+# .......................Find Password
+
+def find_password():
+    website_search = website_entry.get()
+
+    try:
+        with open("data.json", "r") as data_file:
+            data = json.load(data_file)
+
+        if website_search in data:
+            held_email = data[website_search]["Email"]  # Access email inside the website's data
+            held_password = data[website_search]["Password"]
+            yes = messagebox.askokcancel(title=website_search, message=f"Is this Correct?\n Email: {held_email}\nPassword: {held_password}")
+            if yes:
+                email_entry.delete(0, END)
+                password_entry.delete(0, END)
+                email_entry.insert(0, held_email)
+                password_entry.insert(0, held_password)
+            else:
+                email_entry.delete(0, END)
+                password_entry.delete(0, END)
+
+        else:
+            messagebox.showinfo(title="Entry Not Found", message=f"OOps!! {website_search} is not in our records.")
+
+    except FileNotFoundError:
+        print("Error: The data file is missing or corrupted.")
+
 
 #......................................... Save password ...
-
 
 def save():
     website = website_entry.get()
     email = email_entry.get()
     password = password_entry.get()
+    new_data = {
+        website:{
+            "Email":email,
+            "Password":password,
 
-    website_entry.delete(0, END)
-    email_entry.delete(0, END)
-    password_entry.delete(0, END)
+    }
+    }
 
     if not website or not email or not password:
         messagebox.showinfo(title="Are you Stupid?",message="You Left Some of The Boxes Empty. Fill Them Now")
     else:
-        ok = messagebox.askokcancel(title="website",message=f"Is This Correct:\n Email:{email} \n Password:{password}")
-        # the ok variable stores the boolean output from messagebox.askokcancel() which is used below with an if statement, if value is true(when user clicks ok) then executes rest of the function
-        if ok:
-            f = open("data.txt", "a")
-            f.write(f"{website} | {email} | {password}\n")
-            f.close()
+        try:
+            with open("data.json", "r") as data_file:
+                data = json.load(data_file)
+
+        except FileNotFoundError:
+            with open("data.json", "w") as data_file:
+                json.dump(new_data, data_file, indent=4)
+
+        else:
+        #     updating with new data
+            data.update(new_data)
+
+            with open("data.json" , "w") as data_file:
+                json.dump(data,data_file,indent=4)
+
+        finally:
+
+            website_entry.delete(0, END)
+            email_entry.delete(0, END)
+            password_entry.delete(0, END)
+
+
+
+
 
 
 # ................................................. UI ...
@@ -73,8 +122,8 @@ password_label = Label(text="Password:")
 password_label.grid(row=3, column=0)
 
 #........................ Entries ...
-website_entry = Entry(width=38)
-website_entry.grid(row=1, column=1, columnspan=2)
+website_entry = Entry(width=21)
+website_entry.grid(row=1, column=1)
 website_entry.focus()
 email_entry = Entry(width=38)
 email_entry.grid(row=2, column=1, columnspan=2)
@@ -83,8 +132,12 @@ password_entry = Entry(width=21)
 password_entry.grid(row=3, column=1)
 
 #............................ Buttons ...
+generate_password_button = Button(text="          Search          ", command=find_password)
+generate_password_button.grid(row=1, column=2)
+
 generate_password_button = Button(text="Generate Password", command=generate_password)
 generate_password_button.grid(row=3, column=2)
+
 add_button = Button(text="Add", width=36, command=save)
 add_button.grid(row=4, column=1, columnspan=2)
 
